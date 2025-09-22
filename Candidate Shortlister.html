@@ -1,0 +1,975 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Candidate Shortlister</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <meta property="og:title" content="Candidate Shortlister">
+  <meta property="og:description" content="Built with Magic Loops">
+  <meta property="og:image" content="https://magicloops.dev/images/preview.png">
+  <meta property="og:url" content="https://z82g8.magicloops.app">
+  <meta name="twitter:card" content="https://magicloops.dev/images/preview.png">
+  <style>
+    body {
+      margin: 0; padding: 0;
+      overflow: hidden;
+      font-family: sans-serif;
+    }
+    iframe {
+      border: none;
+      width: 100%;
+      height: 100vh;
+    }
+    .hidden-iframe {
+      display: none; /* keep hidden for silent refresh */
+      width: 0; height: 0;
+    }
+  </style>
+</head>
+<body>
+  <!-- 
+    The main application content is in an <iframe> 
+    with user-generated HTML (appData.html).
+  -->
+  <iframe 
+    srcdoc='&lt;!DOCTYPE html&gt;
+&lt;html lang=&quot;en&quot;&gt;
+&lt;head&gt;
+  &lt;meta charset=&quot;utf-8&quot;&gt;
+  &lt;meta name=&quot;viewport&quot; content=&quot;width=device-width, initial-scale=1&quot;&gt;
+  &lt;title&gt;ResuMatch Pro | AI Resume Shortlisting Tool&lt;/title&gt;
+  &lt;script src=&quot;https://cdn.tailwindcss.com&quot;&gt;&lt;/script&gt;
+  &lt;link rel=&quot;stylesheet&quot; href=&quot;https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css&quot;&gt;
+  &lt;script src=&quot;https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js&quot;&gt;&lt;/script&gt;
+  &lt;script src=&quot;https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js&quot;&gt;&lt;/script&gt;
+  &lt;style id=&quot;app-style&quot;&gt;
+    .drag-area {
+      border: 2px dashed #4f46e5;
+      transition: all 0.3s ease;
+    }
+    .drag-area.active {
+      border-color: #6366f1;
+      background-color: #eef2ff;
+    }
+    .loading-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background-color: rgba(0, 0, 0, 0.5);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      z-index: 50;
+    }
+    .loading-spinner {
+      border: 4px solid rgba(255, 255, 255, 0.3);
+      border-radius: 50%;
+      border-top: 4px solid #fff;
+      width: 40px;
+      height: 40px;
+      animation: spin 1s linear infinite;
+    }
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+    .score-indicator {
+      width: 60px;
+      height: 60px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      border-radius: 50%;
+      font-weight: bold;
+      font-size: 1.2rem;
+      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+    }
+    .highlighted-text {
+      background-color: #fef08a;
+      padding: 0 2px;
+      border-radius: 2px;
+    }
+    .tooltip {
+      position: relative;
+    }
+    .tooltip .tooltip-text {
+      visibility: hidden;
+      width: 200px;
+      background-color: #555;
+      color: #fff;
+      text-align: center;
+      border-radius: 6px;
+      padding: 5px;
+      position: absolute;
+      z-index: 1;
+      bottom: 125%;
+      left: 50%;
+      margin-left: -100px;
+      opacity: 0;
+      transition: opacity 0.3s;
+    }
+    .tooltip:hover .tooltip-text {
+      visibility: visible;
+      opacity: 1;
+    }
+    .chart-container {
+      height: 200px;
+    }
+  &lt;/style&gt;
+&lt;/head&gt;
+&lt;body class=&quot;bg-gray-50 min-h-screen&quot;&gt;
+  &lt;header class=&quot;bg-white shadow-sm&quot;&gt;
+    &lt;div class=&quot;max-w-7xl mx-auto px-4 sm:px-6 lg:px-8&quot;&gt;
+      &lt;div class=&quot;flex justify-between items-center py-4&quot;&gt;
+        &lt;div class=&quot;flex items-center&quot;&gt;
+          &lt;i class=&quot;fas fa-file-search text-indigo-600 text-3xl mr-2&quot;&gt;&lt;/i&gt;
+          &lt;h1 class=&quot;text-2xl font-bold text-gray-900&quot;&gt;ResuMatch Pro&lt;/h1&gt;
+        &lt;/div&gt;
+        &lt;div class=&quot;flex items-center&quot;&gt;
+          &lt;span class=&quot;mr-2 text-sm text-gray-600&quot;&gt;Save Progress&lt;/span&gt;
+          &lt;label class=&quot;relative inline-flex items-center cursor-pointer&quot;&gt;
+            &lt;input type=&quot;checkbox&quot; id=&quot;save-toggle&quot; class=&quot;sr-only peer&quot; checked&gt;
+            &lt;div class=&quot;w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-indigo-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[&#039;&#039;] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-600&quot;&gt;&lt;/div&gt;
+          &lt;/label&gt;
+        &lt;/div&gt;
+      &lt;/div&gt;
+    &lt;/div&gt;
+  &lt;/header&gt;
+
+  &lt;main class=&quot;max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8&quot;&gt;
+    &lt;div class=&quot;bg-white shadow sm:rounded-lg p-6 mb-8&quot;&gt;
+      &lt;h2 class=&quot;text-xl font-semibold text-gray-900 mb-4&quot;&gt;Job Description&lt;/h2&gt;
+      &lt;p class=&quot;text-gray-500 mb-4&quot;&gt;Upload a job description file or paste the text below to set the matching criteria.&lt;/p&gt;
+      
+      &lt;!-- Job Description Upload Area --&gt;
+      &lt;div class=&quot;mb-4&quot;&gt;
+        &lt;div id=&quot;job-drag-area&quot; class=&quot;drag-area rounded-lg p-6 cursor-pointer flex flex-col items-center justify-center&quot;&gt;
+          &lt;i class=&quot;fas fa-cloud-upload-alt text-4xl text-indigo-500 mb-2&quot;&gt;&lt;/i&gt;
+          &lt;p class=&quot;text-gray-700 mb-2&quot;&gt;Drag &amp; Drop your job description file here&lt;/p&gt;
+          &lt;p class=&quot;text-gray-500 text-sm mb-2&quot;&gt;Supported formats: PDF, DOCX, TXT&lt;/p&gt;
+          &lt;span class=&quot;text-indigo-600 text-sm&quot;&gt;or click to browse&lt;/span&gt;
+          &lt;input id=&quot;job-file-input&quot; type=&quot;file&quot; class=&quot;hidden&quot; accept=&quot;.pdf,.docx,.txt&quot;&gt;
+        &lt;/div&gt;
+      &lt;/div&gt;
+      
+      &lt;!-- Job Description Text Area --&gt;
+      &lt;div class=&quot;mb-4&quot;&gt;
+        &lt;textarea id=&quot;job-description&quot; class=&quot;w-full h-40 p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent&quot; placeholder=&quot;Paste job description here...&quot;&gt;&lt;/textarea&gt;
+      &lt;/div&gt;
+    &lt;/div&gt;
+
+    &lt;!-- Resumes Section --&gt;
+    &lt;div class=&quot;bg-white shadow sm:rounded-lg p-6 mb-8&quot;&gt;
+      &lt;h2 class=&quot;text-xl font-semibold text-gray-900 mb-4&quot;&gt;Resumes&lt;/h2&gt;
+      &lt;p class=&quot;text-gray-500 mb-4&quot;&gt;Upload candidate resumes or paste the text to evaluate against the job description.&lt;/p&gt;
+      
+      &lt;!-- Resume Upload Area --&gt;
+      &lt;div class=&quot;mb-4&quot;&gt;
+        &lt;div id=&quot;resume-drag-area&quot; class=&quot;drag-area rounded-lg p-6 cursor-pointer flex flex-col items-center justify-center&quot;&gt;
+          &lt;i class=&quot;fas fa-file-alt text-4xl text-indigo-500 mb-2&quot;&gt;&lt;/i&gt;
+          &lt;p class=&quot;text-gray-700 mb-2&quot;&gt;Drag &amp; Drop resumes here&lt;/p&gt;
+          &lt;p class=&quot;text-gray-500 text-sm mb-2&quot;&gt;Supported formats: PDF, DOCX, TXT&lt;/p&gt;
+          &lt;span class=&quot;text-indigo-600 text-sm&quot;&gt;or click to browse&lt;/span&gt;
+          &lt;input id=&quot;resume-file-input&quot; type=&quot;file&quot; class=&quot;hidden&quot; accept=&quot;.pdf,.docx,.txt&quot; multiple&gt;
+        &lt;/div&gt;
+      &lt;/div&gt;
+      
+      &lt;!-- Resume Paste Area --&gt;
+      &lt;div class=&quot;mb-4&quot;&gt;
+        &lt;div class=&quot;flex items-center mb-2&quot;&gt;
+          &lt;input type=&quot;text&quot; id=&quot;candidate-name&quot; class=&quot;mr-2 flex-grow p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent&quot; placeholder=&quot;Candidate Name&quot;&gt;
+          &lt;button id=&quot;add-pasted-resume&quot; class=&quot;bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 transition&quot;&gt;Add Resume&lt;/button&gt;
+        &lt;/div&gt;
+        &lt;textarea id=&quot;resume-text&quot; class=&quot;w-full h-40 p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent&quot; placeholder=&quot;Paste resume text here...&quot;&gt;&lt;/textarea&gt;
+      &lt;/div&gt;
+      
+      &lt;!-- Resume Cards --&gt;
+      &lt;div id=&quot;resume-cards&quot; class=&quot;grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4&quot;&gt;
+        &lt;!-- Resume cards will be added here dynamically --&gt;
+      &lt;/div&gt;
+    &lt;/div&gt;
+    
+    &lt;!-- Action Buttons --&gt;
+    &lt;div class=&quot;flex justify-center mb-8&quot;&gt;
+      &lt;button id=&quot;score-candidates&quot; class=&quot;bg-indigo-600 text-white px-8 py-3 rounded-lg text-lg font-semibold hover:bg-indigo-700 transition disabled:bg-gray-400 disabled:cursor-not-allowed&quot; disabled&gt;
+        &lt;i class=&quot;fas fa-chart-bar mr-2&quot;&gt;&lt;/i&gt;Score Candidates
+      &lt;/button&gt;
+    &lt;/div&gt;
+
+    &lt;!-- Results Section (initially hidden) --&gt;
+    &lt;div id=&quot;results-section&quot; class=&quot;bg-white shadow sm:rounded-lg p-6 mb-8 hidden&quot;&gt;
+      &lt;div class=&quot;flex justify-between items-center mb-6&quot;&gt;
+        &lt;h2 class=&quot;text-xl font-semibold text-gray-900&quot;&gt;Candidate Rankings&lt;/h2&gt;
+        &lt;button id=&quot;download-csv&quot; class=&quot;bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition&quot;&gt;
+          &lt;i class=&quot;fas fa-download mr-2&quot;&gt;&lt;/i&gt;Download CSV
+        &lt;/button&gt;
+      &lt;/div&gt;
+      
+      &lt;div id=&quot;candidates-list&quot; class=&quot;space-y-4&quot;&gt;
+        &lt;!-- Ranked candidates will be added here dynamically --&gt;
+      &lt;/div&gt;
+    &lt;/div&gt;
+
+    &lt;!-- Analytics Dashboard --&gt;
+    &lt;div id=&quot;analytics-dashboard&quot; class=&quot;bg-white shadow sm:rounded-lg p-6 mb-8 hidden&quot;&gt;
+      &lt;h2 class=&quot;text-xl font-semibold text-gray-900 mb-4&quot;&gt;Analytics Dashboard&lt;/h2&gt;
+      
+      &lt;div class=&quot;grid grid-cols-1 md:grid-cols-3 gap-6 mb-6&quot;&gt;
+        &lt;div class=&quot;bg-indigo-50 rounded-lg p-4 text-center&quot;&gt;
+          &lt;p class=&quot;text-gray-500 mb-1&quot;&gt;Total Resumes&lt;/p&gt;
+          &lt;p id=&quot;total-resumes&quot; class=&quot;text-2xl font-bold text-indigo-600&quot;&gt;0&lt;/p&gt;
+        &lt;/div&gt;
+        &lt;div class=&quot;bg-indigo-50 rounded-lg p-4 text-center&quot;&gt;
+          &lt;p class=&quot;text-gray-500 mb-1&quot;&gt;Average Score&lt;/p&gt;
+          &lt;p id=&quot;average-score&quot; class=&quot;text-2xl font-bold text-indigo-600&quot;&gt;0%&lt;/p&gt;
+        &lt;/div&gt;
+        &lt;div class=&quot;bg-indigo-50 rounded-lg p-4 text-center&quot;&gt;
+          &lt;p class=&quot;text-gray-500 mb-1&quot;&gt;Top Candidate Score&lt;/p&gt;
+          &lt;p id=&quot;top-score&quot; class=&quot;text-2xl font-bold text-indigo-600&quot;&gt;0%&lt;/p&gt;
+        &lt;/div&gt;
+      &lt;/div&gt;
+      
+      &lt;div class=&quot;chart-container&quot;&gt;
+        &lt;canvas id=&quot;score-distribution&quot;&gt;&lt;/canvas&gt;
+      &lt;/div&gt;
+    &lt;/div&gt;
+  &lt;/main&gt;
+
+  &lt;footer class=&quot;bg-white border-t border-gray-200&quot;&gt;
+    &lt;div class=&quot;max-w-7xl mx-auto px-4 sm:px-6 lg:px-8&quot;&gt;
+      &lt;div class=&quot;flex justify-between items-center py-6&quot;&gt;
+        &lt;p class=&quot;text-sm text-gray-500&quot;&gt;&amp;copy; 2025 ResuMatch Pro. All rights reserved.&lt;/p&gt;
+        &lt;div class=&quot;flex items-center&quot;&gt;
+          &lt;a href=&quot;javascript:void(0)&quot; class=&quot;text-gray-500 hover:text-indigo-600 mr-4&quot;&gt;
+            &lt;i class=&quot;fas fa-question-circle&quot;&gt;&lt;/i&gt; Help
+          &lt;/a&gt;
+          &lt;a href=&quot;javascript:void(0)&quot; class=&quot;text-gray-500 hover:text-indigo-600&quot;&gt;
+            &lt;i class=&quot;fas fa-cog&quot;&gt;&lt;/i&gt; Settings
+          &lt;/a&gt;
+        &lt;/div&gt;
+      &lt;/div&gt;
+    &lt;/div&gt;
+  &lt;/footer&gt;
+
+  &lt;!-- Loading Overlay (initially hidden) --&gt;
+  &lt;div id=&quot;loading-overlay&quot; class=&quot;loading-overlay hidden&quot;&gt;
+    &lt;div class=&quot;bg-white p-8 rounded-lg shadow-lg flex flex-col items-center&quot;&gt;
+      &lt;div class=&quot;loading-spinner mb-4&quot;&gt;&lt;/div&gt;
+      &lt;p class=&quot;text-lg font-medium text-gray-900&quot;&gt;Analyzing Candidates&lt;/p&gt;
+      &lt;p class=&quot;text-sm text-gray-500&quot; id=&quot;loading-message&quot;&gt;This may take a few moments...&lt;/p&gt;
+    &lt;/div&gt;
+  &lt;/div&gt;
+
+  &lt;script id=&quot;app-script&quot;&gt;
+    document.addEventListener(&#039;DOMContentLoaded&#039;, () =&gt; {
+      // DOM elements
+      const jobDragArea = document.getElementById(&#039;job-drag-area&#039;);
+      const jobFileInput = document.getElementById(&#039;job-file-input&#039;);
+      const jobDescription = document.getElementById(&#039;job-description&#039;);
+      
+      const resumeDragArea = document.getElementById(&#039;resume-drag-area&#039;);
+      const resumeFileInput = document.getElementById(&#039;resume-file-input&#039;);
+      const resumeText = document.getElementById(&#039;resume-text&#039;);
+      const candidateName = document.getElementById(&#039;candidate-name&#039;);
+      const addPastedResume = document.getElementById(&#039;add-pasted-resume&#039;);
+      const resumeCards = document.getElementById(&#039;resume-cards&#039;);
+      
+      const scoreButton = document.getElementById(&#039;score-candidates&#039;);
+      const resultsSection = document.getElementById(&#039;results-section&#039;);
+      const candidatesList = document.getElementById(&#039;candidates-list&#039;);
+      const analyticsDashboard = document.getElementById(&#039;analytics-dashboard&#039;);
+      const loadingOverlay = document.getElementById(&#039;loading-overlay&#039;);
+      const downloadCsv = document.getElementById(&#039;download-csv&#039;);
+      
+      const saveToggle = document.getElementById(&#039;save-toggle&#039;);
+      
+      // State management
+      const state = {
+        jobDescription: &#039;&#039;,
+        resumes: [],
+        results: []
+      };
+      
+      // Enable saving to local storage by default
+      let saveToStorage = true;
+      
+      // Load from local storage
+      const loadFromStorage = () =&gt; {
+        if (localStorage.getItem(&#039;resumatch-state&#039;)) {
+          try {
+            const savedState = JSON.parse(localStorage.getItem(&#039;resumatch-state&#039;));
+            state.jobDescription = savedState.jobDescription || &#039;&#039;;
+            state.resumes = savedState.resumes || [];
+            state.results = savedState.results || [];
+            
+            // Populate UI with saved data
+            jobDescription.value = state.jobDescription;
+            
+            // Add resume cards
+            state.resumes.forEach(resume =&gt; {
+              addResumeCard(resume.name, resume.text);
+            });
+            
+            // Update score button state
+            updateScoreButtonState();
+            
+            // Show results if available
+            if (state.results.length &gt; 0) {
+              displayResults();
+            }
+          } catch (error) {
+            console.error(&#039;Error loading from local storage:&#039;, error);
+          }
+        }
+      };
+      
+      // Save to local storage
+      const saveToLocalStorage = () =&gt; {
+        if (saveToStorage) {
+          localStorage.setItem(&#039;resumatch-state&#039;, JSON.stringify(state));
+        }
+      };
+      
+      // Save toggle event
+      saveToggle.addEventListener(&#039;change&#039;, (e) =&gt; {
+        saveToStorage = e.target.checked;
+        if (saveToStorage) {
+          saveToLocalStorage();
+        } else {
+          localStorage.removeItem(&#039;resumatch-state&#039;);
+        }
+      });
+      
+      // Update score button state
+      const updateScoreButtonState = () =&gt; {
+        if (state.jobDescription.trim() &amp;&amp; state.resumes.length &gt; 0) {
+          scoreButton.disabled = false;
+        } else {
+          scoreButton.disabled = true;
+        }
+      };
+      
+      // Job description related events
+      jobDescription.addEventListener(&#039;input&#039;, () =&gt; {
+        state.jobDescription = jobDescription.value;
+        updateScoreButtonState();
+        saveToLocalStorage();
+      });
+      
+      // Drag and drop for job description
+      [&#039;dragover&#039;, &#039;dragleave&#039;, &#039;drop&#039;].forEach(eventName =&gt; {
+        jobDragArea.addEventListener(eventName, (e) =&gt; {
+          e.preventDefault();
+          e.stopPropagation();
+          
+          if (eventName === &#039;dragover&#039;) {
+            jobDragArea.classList.add(&#039;active&#039;);
+          } else {
+            jobDragArea.classList.remove(&#039;active&#039;);
+          }
+          
+          if (eventName === &#039;drop&#039;) {
+            const file = e.dataTransfer.files[0];
+            if (file) {
+              handleJobFile(file);
+            }
+          }
+        });
+      });
+      
+      jobFileInput.addEventListener(&#039;change&#039;, (e) =&gt; {
+        if (e.target.files.length &gt; 0) {
+          handleJobFile(e.target.files[0]);
+        }
+      });
+      
+      jobDragArea.addEventListener(&#039;click&#039;, () =&gt; {
+        jobFileInput.click();
+      });
+      
+      const handleJobFile = (file) =&gt; {
+        // In a real app, this would use FileReader to read the file content
+        // For now, we&#039;ll just extract the file name and simulate loading
+        
+        // Show loading spinner
+        loadingOverlay.classList.remove(&#039;hidden&#039;);
+        document.getElementById(&#039;loading-message&#039;).textContent = &quot;Reading job description...&quot;;
+        
+        // Simulate file reading delay
+        setTimeout(() =&gt; {
+          // Update job description with file name (in real app, this would be file content)
+          jobDescription.value = `Job description loaded from: ${file.name}`;
+          state.jobDescription = jobDescription.value;
+          
+          // Update button state and save
+          updateScoreButtonState();
+          saveToLocalStorage();
+          
+          // Hide loading spinner
+          loadingOverlay.classList.add(&#039;hidden&#039;);
+        }, 1000);
+      };
+      
+      // Resume drag and drop
+      [&#039;dragover&#039;, &#039;dragleave&#039;, &#039;drop&#039;].forEach(eventName =&gt; {
+        resumeDragArea.addEventListener(eventName, (e) =&gt; {
+          e.preventDefault();
+          e.stopPropagation();
+          
+          if (eventName === &#039;dragover&#039;) {
+            resumeDragArea.classList.add(&#039;active&#039;);
+          } else {
+            resumeDragArea.classList.remove(&#039;active&#039;);
+          }
+          
+          if (eventName === &#039;drop&#039;) {
+            const files = e.dataTransfer.files;
+            if (files.length &gt; 0) {
+              handleResumeFiles(files);
+            }
+          }
+        });
+      });
+      
+      resumeFileInput.addEventListener(&#039;change&#039;, (e) =&gt; {
+        if (e.target.files.length &gt; 0) {
+          handleResumeFiles(e.target.files);
+        }
+      });
+      
+      resumeDragArea.addEventListener(&#039;click&#039;, () =&gt; {
+        resumeFileInput.click();
+      });
+      
+      const handleResumeFiles = (files) =&gt; {
+        // Show loading spinner
+        loadingOverlay.classList.remove(&#039;hidden&#039;);
+        document.getElementById(&#039;loading-message&#039;).textContent = `Reading ${files.length} resume(s)...`;
+        
+        // Simulate file reading delay
+        setTimeout(() =&gt; {
+          Array.from(files).forEach(file =&gt; {
+            const resumeName = file.name.replace(/\.[^/.]+$/, &quot;&quot;); // Remove extension
+            // In a real app, we would read the file content
+            const resumeContent = `Resume content from ${file.name}`;
+            
+            // Add to state
+            state.resumes.push({
+              name: resumeName,
+              text: resumeContent,
+              file: file.name
+            });
+            
+            // Add UI card
+            addResumeCard(resumeName, resumeContent);
+          });
+          
+          // Update button state and save
+          updateScoreButtonState();
+          saveToLocalStorage();
+          
+          // Hide loading spinner
+          loadingOverlay.classList.add(&#039;hidden&#039;);
+        }, 1500);
+      };
+      
+      // Add pasted resume
+      addPastedResume.addEventListener(&#039;click&#039;, () =&gt; {
+        const name = candidateName.value.trim();
+        const text = resumeText.value.trim();
+        
+        if (name &amp;&amp; text) {
+          // Add to state
+          state.resumes.push({
+            name,
+            text,
+            file: &#039;Pasted Text&#039;
+          });
+          
+          // Add UI card
+          addResumeCard(name, text);
+          
+          // Clear inputs
+          candidateName.value = &#039;&#039;;
+          resumeText.value = &#039;&#039;;
+          
+          // Update button state and save
+          updateScoreButtonState();
+          saveToLocalStorage();
+        }
+      });
+      
+      // Create resume card
+      const addResumeCard = (name, text) =&gt; {
+        const card = document.createElement(&#039;div&#039;);
+        card.className = &#039;border border-gray-200 rounded-lg shadow-sm p-4 bg-white&#039;;
+        card.dataset.name = name;
+        
+        card.innerHTML = `
+          &lt;div class=&quot;flex justify-between items-center mb-2&quot;&gt;
+            &lt;div class=&quot;font-medium text-gray-900&quot;&gt;${name}&lt;/div&gt;
+            &lt;button class=&quot;text-red-500 hover:text-red-700 remove-resume&quot;&gt;
+              &lt;i class=&quot;fas fa-times&quot;&gt;&lt;/i&gt;
+            &lt;/button&gt;
+          &lt;/div&gt;
+          &lt;div class=&quot;text-sm text-gray-500 mb-2&quot;&gt;
+            &lt;i class=&quot;far fa-file-alt mr-1&quot;&gt;&lt;/i&gt; 
+            ${text.length} characters
+          &lt;/div&gt;
+          &lt;div class=&quot;text-sm text-gray-700 overflow-hidden text-ellipsis whitespace-nowrap&quot;&gt;${text.substring(0, 50)}...&lt;/div&gt;
+        `;
+        
+        // Add remove event listener
+        card.querySelector(&#039;.remove-resume&#039;).addEventListener(&#039;click&#039;, () =&gt; {
+          // Remove from state
+          const index = state.resumes.findIndex(r =&gt; r.name === name);
+          if (index !== -1) {
+            state.resumes.splice(index, 1);
+          }
+          
+          // Remove from UI
+          card.remove();
+          
+          // Update button state and save
+          updateScoreButtonState();
+          saveToLocalStorage();
+        });
+        
+        resumeCards.appendChild(card);
+      };
+      
+      // Score candidates
+      scoreButton.addEventListener(&#039;click&#039;, () =&gt; {
+        // Show loading overlay
+        loadingOverlay.classList.remove(&#039;hidden&#039;);
+        document.getElementById(&#039;loading-message&#039;).textContent = &quot;Analyzing candidates...&quot;;
+        
+        // Simulate API call with delay
+        setTimeout(() =&gt; {
+          // Mock scoring functionality
+          state.results = state.resumes.map((resume) =&gt; {
+            // Generate a random score between 40 and 95
+            const score = Math.floor(Math.random() * 56) + 40;
+            
+            return {
+              name: resume.name,
+              score,
+              matches: [
+                {
+                  jobSkill: &quot;Communication skills&quot;,
+                  resumeText: &quot;Excellent written and verbal communication skills&quot;,
+                  weight: 0.9
+                },
+                {
+                  jobSkill: &quot;Project management&quot;,
+                  resumeText: &quot;Led multiple projects to successful completion&quot;,
+                  weight: 0.8
+                },
+                {
+                  jobSkill: &quot;Technical expertise&quot;,
+                  resumeText: &quot;Proficient in required technical skills&quot;,
+                  weight: 0.7
+                }
+              ]
+            };
+          });
+          
+          // Sort by score (highest first)
+          state.results.sort((a, b) =&gt; b.score - a.score);
+          
+          // Save to local storage
+          saveToLocalStorage();
+          
+          // Display results
+          displayResults();
+          
+          // Hide loading overlay
+          loadingOverlay.classList.add(&#039;hidden&#039;);
+        }, 2000);
+      });
+      
+      // Display results
+      const displayResults = () =&gt; {
+        // Show results section
+        resultsSection.classList.remove(&#039;hidden&#039;);
+        analyticsDashboard.classList.remove(&#039;hidden&#039;);
+        
+        // Clear previous results
+        candidatesList.innerHTML = &#039;&#039;;
+        
+        // Populate candidate list
+        state.results.forEach((result, index) =&gt; {
+          const candidateItem = document.createElement(&#039;div&#039;);
+          candidateItem.className = &#039;border border-gray-200 rounded-lg p-4 bg-white&#039;;
+          
+          // Determine score color
+          let scoreColorClass = &#039;bg-red-500 text-white&#039;;
+          if (result.score &gt;= 80) {
+            scoreColorClass = &#039;bg-green-500 text-white&#039;;
+          } else if (result.score &gt;= 60) {
+            scoreColorClass = &#039;bg-yellow-500 text-white&#039;;
+          }
+          
+          candidateItem.innerHTML = `
+            &lt;div class=&quot;flex justify-between items-center&quot;&gt;
+              &lt;div&gt;
+                &lt;div class=&quot;flex items-center&quot;&gt;
+                  &lt;span class=&quot;text-xl font-bold mr-2 text-gray-900&quot;&gt;${index + 1}.&lt;/span&gt;
+                  &lt;span class=&quot;font-semibold text-lg&quot;&gt;${result.name}&lt;/span&gt;
+                &lt;/div&gt;
+              &lt;/div&gt;
+              
+              &lt;div class=&quot;flex items-center&quot;&gt;
+                &lt;div class=&quot;score-indicator ${scoreColorClass}&quot;&gt;
+                  ${result.score}%
+                &lt;/div&gt;
+                &lt;button class=&quot;ml-4 text-indigo-600 hover:text-indigo-800 view-details&quot;&gt;
+                  &lt;i class=&quot;fas fa-chevron-down&quot;&gt;&lt;/i&gt;
+                &lt;/button&gt;
+              &lt;/div&gt;
+            &lt;/div&gt;
+            
+            &lt;div class=&quot;match-details hidden mt-4 border-t border-gray-200 pt-4&quot;&gt;
+              &lt;h4 class=&quot;font-medium text-gray-900 mb-2&quot;&gt;Match Details&lt;/h4&gt;
+              &lt;div class=&quot;space-y-3&quot;&gt;
+                ${result.matches.map(match =&gt; `
+                  &lt;div class=&quot;bg-gray-50 p-3 rounded&quot;&gt;
+                    &lt;div class=&quot;flex justify-between text-sm&quot;&gt;
+                      &lt;div class=&quot;font-medium&quot;&gt;Job Requirement:&lt;/div&gt;
+                      &lt;div class=&quot;text-gray-700&quot;&gt;${match.jobSkill}&lt;/div&gt;
+                    &lt;/div&gt;
+                    &lt;div class=&quot;flex justify-between text-sm mt-1&quot;&gt;
+                      &lt;div class=&quot;font-medium&quot;&gt;Found in Resume:&lt;/div&gt;
+                      &lt;div class=&quot;text-gray-700 highlighted-text&quot;&gt;${match.resumeText}&lt;/div&gt;
+                    &lt;/div&gt;
+                    &lt;div class=&quot;w-full bg-gray-200 rounded-full h-2.5 mt-2&quot;&gt;
+                      &lt;div class=&quot;bg-indigo-600 h-2.5 rounded-full&quot; style=&quot;width: ${match.weight * 100}%&quot;&gt;&lt;/div&gt;
+                    &lt;/div&gt;
+                  &lt;/div&gt;
+                `).join(&#039;&#039;)}
+              &lt;/div&gt;
+            &lt;/div&gt;
+          `;
+          
+          // Add event listener to toggle match details
+          candidateItem.querySelector(&#039;.view-details&#039;).addEventListener(&#039;click&#039;, (e) =&gt; {
+            const detailsSection = candidateItem.querySelector(&#039;.match-details&#039;);
+            const icon = e.currentTarget.querySelector(&#039;i&#039;);
+            
+            if (detailsSection.classList.contains(&#039;hidden&#039;)) {
+              detailsSection.classList.remove(&#039;hidden&#039;);
+              icon.classList.replace(&#039;fa-chevron-down&#039;, &#039;fa-chevron-up&#039;);
+            } else {
+              detailsSection.classList.add(&#039;hidden&#039;);
+              icon.classList.replace(&#039;fa-chevron-up&#039;, &#039;fa-chevron-down&#039;);
+            }
+          });
+          
+          candidatesList.appendChild(candidateItem);
+        });
+        
+        // Update analytics
+        updateAnalytics();
+      };
+      
+      // Update analytics dashboard
+      const updateAnalytics = () =&gt; {
+        if (state.results.length === 0) return;
+        
+        const totalResumes = state.results.length;
+        document.getElementById(&#039;total-resumes&#039;).textContent = totalResumes;
+        
+        // Calculate average score
+        const totalScore = state.results.reduce((sum, result) =&gt; sum + result.score, 0);
+        const averageScore = totalScore / totalResumes;
+        document.getElementById(&#039;average-score&#039;).textContent = `${Math.round(averageScore)}%`;
+        
+        // Find top score
+        const topScore = state.results[0]?.score || 0;
+        document.getElementById(&#039;top-score&#039;).textContent = `${topScore}%`;
+        
+        // Create score distribution chart
+        const scoreRanges = [&#039;40-49&#039;, &#039;50-59&#039;, &#039;60-69&#039;, &#039;70-79&#039;, &#039;80-89&#039;, &#039;90-100&#039;];
+        const scoreDistribution = [0, 0, 0, 0, 0, 0];
+        
+        state.results.forEach(result =&gt; {
+          const score = result.score;
+          if (score &gt;= 90) scoreDistribution[5]++;
+          else if (score &gt;= 80) scoreDistribution[4]++;
+          else if (score &gt;= 70) scoreDistribution[3]++;
+          else if (score &gt;= 60) scoreDistribution[2]++;
+          else if (score &gt;= 50) scoreDistribution[1]++;
+          else scoreDistribution[0]++;
+        });
+        
+        const ctx = document.getElementById(&#039;score-distribution&#039;).getContext(&#039;2d&#039;);
+        
+        if (window.scoreChart) {
+          window.scoreChart.destroy();
+        }
+        
+        window.scoreChart = new Chart(ctx, {
+          type: &#039;bar&#039;,
+          data: {
+            labels: scoreRanges,
+            datasets: [{
+              label: &#039;Number of Candidates&#039;,
+              data: scoreDistribution,
+              backgroundColor: [
+                &#039;#f87171&#039;, // red for 40-49
+                &#039;#fbbf24&#039;, // orange for 50-59
+                &#039;#fcd34d&#039;, // yellow for 60-69
+                &#039;#a3e635&#039;, // lime for 70-79
+                &#039;#34d399&#039;, // green for 80-89
+                &#039;#10b981&#039;  // emerald for 90-100
+              ],
+              borderWidth: 1
+            }]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+              y: {
+                beginAtZero: true,
+                ticks: {
+                  precision: 0
+                }
+              }
+            },
+            plugins: {
+              title: {
+                display: true,
+                text: &#039;Score Distribution&#039;
+              }
+            }
+          }
+        });
+      };
+      
+      // Download CSV
+      downloadCsv.addEventListener(&#039;click&#039;, () =&gt; {
+        if (state.results.length === 0) return;
+        
+        // Create CSV content
+        let csvContent = &quot;data:text/csv;charset=utf-8,&quot;;
+        csvContent += &quot;Rank,Name,Score\n&quot;;
+        
+        state.results.forEach((result, index) =&gt; {
+          csvContent += `${index + 1},${result.name},${result.score}%\n`;
+        });
+        
+        // Create download link
+        const encodedUri = encodeURI(csvContent);
+        const link = document.createElement(&quot;a&quot;);
+        link.setAttribute(&quot;href&quot;, encodedUri);
+        link.setAttribute(&quot;download&quot;, &quot;candidate_rankings.csv&quot;);
+        document.body.appendChild(link);
+        
+        // Trigger download
+        link.click();
+        document.body.removeChild(link);
+      });
+      
+      // Initial setup
+      loadFromStorage();
+    });
+  &lt;/script&gt;
+&lt;/body&gt;
+&lt;/html&gt;' 
+    sandbox="allow-scripts allow-same-origin allow-forms allow-pointer-lock allow-modals allow-downloads allow-popups allow-presentation">
+  </iframe>
+
+  <!-- Hidden iframe used for "silent" SSO attempts -->
+  <iframe 
+    id="silentAuthFrame" 
+    class="hidden-iframe"
+    sandbox="allow-same-origin allow-scripts allow-forms">
+  </iframe>
+
+  <script>
+    /**
+     * 1) On page load, we check if the subdomain JWT is valid.
+     * 2) If not valid, we attempt a SILENT login in a hidden iframe.
+     * 3) If silent login fails, we open a POPUP for a visible login.
+     * 4) We also schedule a token refresh before it expires.
+     */
+    (function(){
+      const VERIFY_ENDPOINT = '/api/auth/verify';
+      const SUBDOMAIN = window.location.host.split('.')[0] || 'blog'; 
+      // e.g. "app1" from "app1.magicloops.dev"
+
+      // Build the authorize URL to magicloops.dev
+      // This will generate a single-use code & redirect back to our callback
+      // "redirect_to" => subdomain callback, which sets our cookie
+      const AUTH_BASE = 'https://magicloops.dev/api/sso/authorize';
+      const LOGIN_BASE = 'https://magicloops.dev/login';
+      const CALLBACK_URL = `https://${window.location.host}/api/auth/callback`;
+      const authorizeUrl = new URL(AUTH_BASE);
+      authorizeUrl.searchParams.set('subdomain', SUBDOMAIN);
+      authorizeUrl.searchParams.set('redirect_to', CALLBACK_URL);
+      const loginUrl = new URL(AUTH_BASE);
+      loginUrl.searchParams.set('subdomain', SUBDOMAIN);
+      loginUrl.searchParams.set('redirect_to', CALLBACK_URL);
+
+      /**
+       * Make a GET request to /api/auth/verify to see if subdomain_jwt is valid.
+       * Returns { userId, exp } if OK, or 401 if missing/expired.
+       */
+      async function verifySession() {
+        const resp = await fetch(VERIFY_ENDPOINT, { method: 'GET' });
+        if (!resp.ok) {
+          throw new Error('Verify failed: ' + resp.status);
+        }
+        return await resp.json(); // { userId, exp }
+      }
+
+      /**
+       * Perform a "silent" SSO attempt by loading the authorize endpoint
+       * in a hidden iframe. If the main domain session is still valid,
+       * the user won't see a login prompt. On success, our callback sets the cookie.
+       *
+       * We'll wait for the iframe to load & then re-check our subdomain /verify.
+       */
+      async function doSilentAuth() {
+        return new Promise((resolve, reject) => {
+          const frame = document.getElementById('silentAuthFrame');
+          frame.src = authorizeUrl.toString();
+
+          // We'll listen to "load" event. Once it loads, we check /verify again.
+          frame.onload = async function() {
+            try {
+              const data = await verifySession();
+              resolve(data); // userId, exp
+            } catch (err) {
+              reject(err);
+            }
+          };
+
+          // Optional: handle error event
+          frame.onerror = () => {
+            reject(new Error('Hidden iframe load error'));
+          };
+        });
+      }
+
+      /**
+       * Open a popup with the magicloops.dev authorize URL.
+       * If the user needs to log in, they'll see the Supabase screen.
+       * Once the callback sets the JWT, we poll for closure & re-verify.
+       */
+      async function doPopupAuth() {
+        return new Promise((resolve, reject) => {
+          const popup = window.open(
+            loginUrl.toString(),
+            'authPopup',
+            'width=600,height=700'
+          );
+          if (!popup) {
+            return reject(new Error('Popup blocked'));
+          }
+
+          const timer = setInterval(async () => {
+            // If popup closed, check if we have a valid session
+            if (popup.closed) {
+              clearInterval(timer);
+              try {
+                const data = await verifySession();
+                resolve(data);
+              } catch (err) {
+                reject(err);
+              }
+            }
+          }, 500);
+        });
+      }
+
+      /**
+       * The main login flow attempt:
+       * 1) Try verifying subdomain_jwt
+       * 2) If missing/expired, attempt SILENT iframe
+       * 3) If silent fails => fallback to POPUP
+       */
+      async function ensureLoggedIn() {
+        try {
+          const info = await verifySession();
+          // Already valid. Return info { userId, exp }
+          return info;
+        } catch (err) {
+          // Not logged in or token expired
+          console.log('No valid subdomain JWT, attempting silent auth...');
+        }
+
+        // Attempt silent auth in hidden iframe
+        try {
+          const info = await doSilentAuth();
+          console.log('Silent auth success:', info);
+          return info;
+        } catch (err) {
+          console.warn('Silent auth failed, opening popup...');
+        }
+
+        // Fallback to popup
+        try {
+//          const info = await doPopupAuth();
+//          console.log('Popup auth success:', info);
+//          return info;
+        } catch (err) {
+          console.error('Popup login failed or canceled:', err);
+          throw err;
+        }
+      }
+
+      /**
+       * Schedule an automatic token refresh a bit before the token expires.
+       * For example, refresh 1 minute before exp or halfway—your choice.
+       */
+      function scheduleAutoRefresh(exp) {
+        // Current time in seconds
+        const nowSeconds = Math.floor(Date.now() / 1000);
+        // Refresh 30 seconds before actual expiration, for safety
+        const refreshTime = Math.max((exp - 30) - nowSeconds, 1);
+        const refreshMs = refreshTime * 1000;
+
+        console.log('Scheduling refresh in', refreshTime, 'seconds');
+        setTimeout(async () => {
+          console.log('Attempting token refresh...');
+          try {
+            const info = await doSilentAuth();
+            console.log('Token silently refreshed:', info);
+            scheduleAutoRefresh(info.exp);
+          } catch (err) {
+            console.warn('Silent refresh failed, fallback to popup...');
+            // If silent refresh fails, we do popup to re-auth
+            try {
+//              const info = await doPopupAuth();
+//              console.log('Popup refresh success:', info);
+//              scheduleAutoRefresh(info.exp);
+            } catch (popErr) {
+              console.error('Popup refresh also failed. User not logged in:', popErr);
+            }
+          }
+        }, refreshMs);
+      }
+
+      // Now, run the main flow on page load
+      (async function main() {
+        try {
+console.log('Hello Magic App User!');
+          const info = await ensureLoggedIn();
+          console.log('User is logged in:', info);
+          // After we confirm a valid JWT, we schedule the refresh
+          scheduleAutoRefresh(info.exp);
+        } catch (err) {
+          console.error('User is not logged in and refused to log in:', err);
+          // Show a message or redirect if needed
+        }
+      })();
+
+    })();
+  </script>
+</body>
+</html>
